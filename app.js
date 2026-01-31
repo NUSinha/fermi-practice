@@ -14,49 +14,35 @@ let bootScreen, desktop, clockElement;
 let statQuestions, statError, statAccuracy; // New stat elements
 
 // Fetch and process question data from the GitHub repository
-// The data.js file is a JavaScript file that defines a 'data' variable containing an array of question objects
-// Handles network errors and parsing errors gracefully
+// Handles network errors and invalid JSON gracefully
 async function loadQuestions() {
     try {
-        // Fetch the data.js file as text (not JSON)
-        const response = await fetch('https://raw.githubusercontent.com/landy8697/open-scioly-fermi/master/data.js');
+        const response = await fetch('https://raw.githubusercontent.com/EricAndrechek/FermiQuestions/main/question-bank.json');
         
         // Check if the fetch was successful
         if (!response.ok) {
             throw new Error(`Failed to load questions: HTTP ${response.status}. Please check your internet connection.`);
         }
         
-        // Get the JavaScript code as text
-        const jsCode = await response.text();
+        // Parse the JSON data
+        const data = await response.json();
         
-        // Extract the data variable from the JavaScript file
-        // The file contains: data = [{question: "...", answer: 5, ...}, ...]
-        // We use Function() to safely execute the code and extract the 'data' variable
-        let data;
-        try {
-            // Create a function that executes the code and returns the data variable
-            const extractData = new Function(jsCode + '; return data;');
-            data = extractData();
-        } catch (parseError) {
-            throw new Error('Failed to parse question data. The data file format may have changed.');
+        // Validate that the data has the expected structure
+        if (!data.questions || typeof data.questions !== 'object') {
+            throw new Error('Invalid question data format.');
         }
         
-        // Validate that we got an array
-        if (!Array.isArray(data)) {
-            throw new Error('Invalid question data format. Expected an array.');
-        }
-        
-        // Convert the data format to our app's expected format
-        // The new format is: [{question: "...", answer: 5, source: "...", number: 1}, ...]
-        // Our app expects: [{question: "...", answer: 5}, ...]
-        const flattened = data.map(item => ({
-            question: item.question ? item.question.trim() : '',
-            answer: item.answer // Answer is already the power of 10
-        })).filter(item => item.question && typeof item.answer === 'number'); // Filter out invalid entries
-        
-        // Validate we have questions
-        if (flattened.length === 0) {
-            throw new Error('No valid questions found in the data file.');
+        // Flatten all questions from all sources into a single array
+        // The JSON structure has questions nested under different sources
+        const flattened = [];
+        for (const source in data.questions) {
+            const sourceQuestions = data.questions[source];
+            for (const questionText in sourceQuestions) {
+                flattened.push({
+                    question: questionText,
+                    answer: sourceQuestions[questionText] // Answer is the power of 10
+                });
+            }
         }
         
         // Shuffle the array randomly so questions appear in different order each session
@@ -314,24 +300,39 @@ function updateClock() {
 }
 
 // Boot sequence: show boot screen, then transition to desktop
+// "Ready." appears at 0.6s, wait 0.3s after that (0.9s total), then fade out
 function showBootSequence() {
     bootScreen = document.getElementById('bootScreen');
     desktop = document.getElementById('desktop');
     
-    if (!bootScreen || !desktop) return;
+    if (!bootScreen || !desktop) {
+        console.error('Boot screen or desktop element not found');
+        return;
+    }
     
-    // Boot screen is visible by default
-    // After 2.5 seconds, fade out and show desktop
+    // Ensure desktop starts hidden
+    desktop.style.display = 'none';
+    
+    // "Ready." appears at 0.6s, wait 0.3s after that (0.9s total)
     setTimeout(() => {
+        // Fade out boot screen (faster fade)
         bootScreen.style.opacity = '0';
-        bootScreen.style.transition = 'opacity 0.5s ease-out';
+        bootScreen.style.transition = 'opacity 0.3s ease-out';
         
+        // After fade completes, hide boot screen and show desktop
         setTimeout(() => {
             bootScreen.style.display = 'none';
             desktop.style.display = 'block';
-            desktop.style.animation = 'fadeIn 0.5s ease-in';
-        }, 500);
-    }, 2500);
+            desktop.style.opacity = '0';
+            desktop.style.transition = 'opacity 0.3s ease-in';
+            
+            // Force reflow to ensure transition works
+            desktop.offsetHeight;
+            
+            // Fade in desktop
+            desktop.style.opacity = '1';
+        }, 300);
+    }, 900); // 0.6s (Ready appears) + 0.3s (wait) = 0.9s
 }
 
 // Initialize UI
@@ -390,28 +391,42 @@ function initializeUI() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('FERMI ESTIMATOR v1.0 loaded');
     
-    // Show boot sequence
-    showBootSequence();
-    
-    // Initialize UI (but desktop is hidden until boot completes)
+    // Initialize UI first (elements need to exist for boot sequence)
     initializeUI();
     
-    try {
-        // Fetch and load questions from the remote data file
-        await loadQuestions();
-        console.log('Questions loaded and shuffled:', questionsArray);
-        
-        // Wait for boot sequence to complete before showing first question
-        setTimeout(() => {
+    // Show boot sequence (starts immediately)
+    showBootSequence();
+    
+    // Start loading questions in parallel with boot sequence
+    let questionsLoaded = false;
+    let bootComplete = false;
+    
+    function showQuestionWhenReady() {
+        if (questionsLoaded && bootComplete && questionDisplay) {
             if (questionsArray.length > 0) {
                 displayQuestion();
             }
-        }, 3000); // Boot sequence is 2.5s + 0.5s fade
+        }
+    }
+    
+    // Boot sequence completes at ~1.2s (0.9s + 0.3s fade)
+    setTimeout(() => {
+        bootComplete = true;
+        showQuestionWhenReady();
+    }, 1200);
+    
+    try {
+        // Fetch and load questions from the remote JSON file (in parallel with boot)
+        await loadQuestions();
+        console.log('Questions loaded and shuffled:', questionsArray);
+        questionsLoaded = true;
+        showQuestionWhenReady();
     } catch (error) {
         // Handle errors gracefully - show user-friendly message
         console.error('Failed to load questions:', error);
+        questionsLoaded = true; // Mark as "loaded" even on error so we can show error message
         
-        // Wait for boot sequence, then show error
+        // Wait for boot to complete, then show error
         setTimeout(() => {
             if (questionDisplay) {
                 questionDisplay.textContent = `ERROR: ${error.message || 'Unable to load questions. Please check your internet connection and refresh the page.'}`;
@@ -422,6 +437,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Disable input and submit button if questions can't be loaded
             if (answerInput) answerInput.disabled = true;
             if (submitBtn) submitBtn.disabled = true;
-        }, 3000);
+        }, 1200);
     }
 });
