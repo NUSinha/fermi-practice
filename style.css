@@ -159,7 +159,7 @@ body {
     background: #F5F0E1; /* Warm cream */
     border: 2px solid #8B8B8B;
     box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.5);
-    max-width: 600px;
+    max-width: 700px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -218,7 +218,7 @@ body {
    WINDOW CONTENT
    ============================================ */
 .window-content {
-    padding: 24px;
+    padding: 28px;
     background: #F5F0E1;
 }
 
@@ -242,9 +242,24 @@ body {
     min-height: 100px;
     text-align: center;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     animation: fadeIn 0.3s ease-in;
+}
+
+.question-text {
+    margin-bottom: 8px;
+}
+
+.question-attribution {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #8B8B7A;
+    margin-top: 8px;
+    font-style: normal;
+    font-weight: normal;
+    text-align: right;
 }
 
 @keyframes fadeIn {
@@ -541,4 +556,35 @@ body {
     .boot-screen {
         font-size: 14px;
     }
+
+    .dataset-credit {
+        font-size: 9px;
+        right: 10px;
+        bottom: 8px;
+    }
+}
+
+/* ============================================
+   DATASET CREDIT
+   ============================================ */
+.dataset-credit {
+    position: fixed;
+    bottom: 12px;
+    right: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #5A5A6A;
+    z-index: 50;
+    pointer-events: auto;
+    font-weight: normal;
+}
+
+.dataset-credit a {
+    color: #5A5A6A;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
+
+.dataset-credit a:hover {
+    color: #8A8A9A;
 }

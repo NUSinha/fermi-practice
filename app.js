@@ -1,8 +1,8 @@
 // Fermi Problem Practice App
 
-// Store the shuffled questions array
+// Store the questions array
 let questionsArray = [];
-let currentQuestionIndex = 0;
+let currentQuestion = null; // Store the currently displayed question
 let questionsAnswered = 0;
 let totalError = 0;
 let withinOneOrder = 0; // Track answers within 1 order of magnitude
@@ -13,59 +13,52 @@ let errorMessage; // For displaying error messages
 let bootScreen, desktop, clockElement;
 let statQuestions, statError, statAccuracy; // New stat elements
 
-// Fetch and process question data from the GitHub repository
-// Handles network errors and invalid JSON gracefully
-async function loadQuestions() {
-    try {
-        const response = await fetch('https://raw.githubusercontent.com/EricAndrechek/FermiQuestions/main/question-bank.json');
-        
-        // Check if the fetch was successful
-        if (!response.ok) {
-            throw new Error(`Failed to load questions: HTTP ${response.status}. Please check your internet connection.`);
-        }
-        
-        // Parse the JSON data
-        const data = await response.json();
-        
-        // Validate that the data has the expected structure
-        if (!data.questions || typeof data.questions !== 'object') {
-            throw new Error('Invalid question data format.');
-        }
-        
-        // Flatten all questions from all sources into a single array
-        // The JSON structure has questions nested under different sources
-        const flattened = [];
-        for (const source in data.questions) {
-            const sourceQuestions = data.questions[source];
-            for (const questionText in sourceQuestions) {
-                flattened.push({
-                    question: questionText,
-                    answer: sourceQuestions[questionText] // Answer is the power of 10
-                });
+// Load question data from the global 'data' variable set by data.js script tag
+// The data.js file defines: data = [{question: "...", answer: 9, source: "...", number: 1}, ...]
+// This function waits for the script to load, then validates the data
+function loadQuestions() {
+    return new Promise((resolve, reject) => {
+        // Check if data is already loaded
+        if (typeof data !== 'undefined' && Array.isArray(data)) {
+            if (data.length === 0) {
+                reject(new Error('No questions found in data file.'));
+                return;
             }
+            questionsArray = data;
+            console.log(`Loaded ${questionsArray.length} questions`);
+            resolve(questionsArray);
+            return;
         }
         
-        // Shuffle the array randomly so questions appear in different order each session
-        shuffleArray(flattened);
-        
-        // Store in the global variable for use throughout the session
-        questionsArray = flattened;
-        
-        console.log(`Loaded ${questionsArray.length} questions`);
-        return questionsArray;
-    } catch (error) {
-        console.error('Error loading questions:', error);
-        // Re-throw with a user-friendly message
-        throw new Error(error.message || 'Unable to load questions. Please check your internet connection and try again.');
-    }
+        // Wait for script to load (check every 100ms, max 5 seconds)
+        let attempts = 0;
+        const maxAttempts = 50;
+        const checkInterval = setInterval(() => {
+            attempts++;
+            if (typeof data !== 'undefined' && Array.isArray(data)) {
+                clearInterval(checkInterval);
+                if (data.length === 0) {
+                    reject(new Error('No questions found in data file.'));
+                    return;
+                }
+                questionsArray = data;
+                console.log(`Loaded ${questionsArray.length} questions`);
+                resolve(questionsArray);
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkInterval);
+                reject(new Error('Question data not loaded. Please check your internet connection and refresh the page.'));
+            }
+        }, 100);
+    });
 }
 
-// Fisher-Yates shuffle algorithm
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+// Pick a random question from the data array
+function getRandomQuestion() {
+    if (questionsArray.length === 0) {
+        return null;
     }
+    const randomIndex = Math.floor(Math.random() * questionsArray.length);
+    return questionsArray[randomIndex];
 }
 
 // Parse user input (handles scientific notation like 5e6, 5E6, 3.5e8, etc.)
@@ -116,17 +109,32 @@ function getFeedbackMessage(error) {
     return `Off by ${error} orders of magnitude`;
 }
 
-// Display current question
+// Display current question with attribution
 function displayQuestion() {
-    if (currentQuestionIndex >= questionsArray.length) {
-        questionDisplay.textContent = 'No more questions! You\'ve completed all questions.';
+    if (questionsArray.length === 0) {
+        questionDisplay.innerHTML = 'No questions available.';
         answerInput.disabled = true;
         submitBtn.disabled = true;
         return;
     }
     
-    const currentQuestion = questionsArray[currentQuestionIndex];
-    questionDisplay.textContent = currentQuestion.question;
+    // Pick a random question from the array and store it
+    currentQuestion = getRandomQuestion();
+    
+    if (!currentQuestion) {
+        questionDisplay.innerHTML = 'No questions available.';
+        answerInput.disabled = true;
+        submitBtn.disabled = true;
+        return;
+    }
+    
+    // Display question text with attribution
+    const questionText = currentQuestion.question || '';
+    const attribution = currentQuestion.source && currentQuestion.number 
+        ? `<div class="question-attribution">— ${currentQuestion.source}, #${currentQuestion.number}</div>`
+        : '';
+    
+    questionDisplay.innerHTML = `<div class="question-text">${questionText}</div>${attribution}`;
     answerInput.value = '';
     answerInput.focus();
     resultDisplay.style.display = 'none';
@@ -166,8 +174,11 @@ function checkAnswer() {
         return;
     }
     
-    // Get the current question and its correct answer (as power of 10)
-    const currentQuestion = questionsArray[currentQuestionIndex];
+    // Get the currently displayed question
+    if (!currentQuestion) {
+        showErrorMessage('No question loaded');
+        return;
+    }
     const correctOrder = currentQuestion.answer;
     
     // Convert user's number to order of magnitude
@@ -264,9 +275,8 @@ function getPowerOf10Description(power) {
     return `(that's about ${value})`;
 }
 
-// Move to next question
+// Move to next question (picks a new random question)
 function nextQuestion() {
-    currentQuestionIndex++;
     answerInput.disabled = false;
     submitBtn.disabled = false;
     displayQuestion();
@@ -416,9 +426,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 1200);
     
     try {
-        // Fetch and load questions from the remote JSON file (in parallel with boot)
+        // Load questions from the global 'data' variable (set by data.js script tag)
         await loadQuestions();
-        console.log('Questions loaded and shuffled:', questionsArray);
+        console.log('Questions loaded:', questionsArray);
         questionsLoaded = true;
         showQuestionWhenReady();
     } catch (error) {
