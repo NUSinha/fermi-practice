@@ -3,38 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fermi Problem Practice</title>
+    <title>FERMI ESTIMATOR v1.0</title>
+    <!-- Retro pixel fonts from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Fermi Problem Practice</h1>
-        <div id="app">
-            <div class="score-tracker" id="scoreTracker">
-                Questions answered: 0 | Average error: 0.0 orders of magnitude
+    <!-- Boot sequence screen (hidden after load) -->
+    <div id="bootScreen" class="boot-screen">
+        <div class="boot-text">
+            <div class="boot-line">FERMI ESTIMATOR v1.0</div>
+            <div class="boot-line">Loading question bank...</div>
+            <div class="boot-line">Ready.</div>
+        </div>
+    </div>
+
+    <!-- Main desktop interface -->
+    <div id="desktop" class="desktop" style="display: none;">
+        <!-- Menu bar -->
+        <div class="menu-bar">
+            <div class="menu-left">
+                <span class="menu-icon">≈</span>
+                <span class="menu-item">File</span>
+                <span class="menu-item">Edit</span>
+                <span class="menu-item">Help</span>
             </div>
-            
-            <div class="question-display" id="questionDisplay">
-                Loading questions...
-            </div>
-            
-            <div class="input-section">
-                <input 
-                    type="text" 
-                    id="answerInput" 
-                    placeholder="Enter your answer (e.g., 50000 or 3.5e8)"
-                    autocomplete="off"
-                >
-                <div class="error-message" id="errorMessage" style="display: none;"></div>
-                <button id="submitBtn" class="btn btn-primary">Submit</button>
-            </div>
-            
-            <div class="result-display" id="resultDisplay" style="display: none;">
-                <div class="result-content" id="resultContent"></div>
-                <button id="nextBtn" class="btn btn-secondary">Next Question</button>
+            <div class="menu-right" id="clock">00:00</div>
+        </div>
+
+        <!-- Main application window -->
+        <div class="window-container">
+            <div class="window">
+                <!-- Window title bar -->
+                <div class="window-titlebar">
+                    <div class="window-controls">
+                        <span class="control-dot control-red"></span>
+                        <span class="control-dot control-yellow"></span>
+                        <span class="control-dot control-green"></span>
+                    </div>
+                    <div class="window-title">FERMI ESTIMATOR v1.0</div>
+                </div>
+
+                <!-- Window content -->
+                <div class="window-content">
+                    <div id="app">
+                        <!-- Question display -->
+                        <div class="question-display" id="questionDisplay">
+                            Loading questions...
+                        </div>
+                        
+                        <!-- Input section -->
+                        <div class="input-section">
+                            <input 
+                                type="text" 
+                                id="answerInput" 
+                                placeholder="Enter estimate (e.g., 50000 or 3.5e8)"
+                                autocomplete="off"
+                                class="retro-input"
+                            >
+                            <div class="error-message" id="errorMessage" style="display: none;"></div>
+                            <button id="submitBtn" class="btn btn-primary">SUBMIT</button>
+                        </div>
+                        
+                        <!-- Result display -->
+                        <div class="result-display" id="resultDisplay" style="display: none;">
+                            <div class="result-content" id="resultContent"></div>
+                            <button id="nextBtn" class="btn btn-secondary">NEXT QUESTION</button>
+                        </div>
+
+                        <!-- Stats separator -->
+                        <div class="stats-separator"></div>
+
+                        <!-- Score tracker -->
+                        <div class="score-tracker" id="scoreTracker">
+                            <div class="stat-line">
+                                <span class="stat-label">QUESTIONS:</span>
+                                <span class="stat-value" id="statQuestions">000</span>
+                            </div>
+                            <div class="stat-line">
+                                <span class="stat-label">AVG ERROR:</span>
+                                <span class="stat-value" id="statError">0.0</span>
+                            </div>
+                            <div class="stat-line">
+                                <span class="stat-label">ACCURACY:</span>
+                                <span class="stat-value" id="statAccuracy">000%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
     <script src="app.js"></script>
 </body>
 </html>

@@ -10,37 +10,53 @@ let withinOneOrder = 0; // Track answers within 1 order of magnitude
 // DOM elements
 let questionDisplay, answerInput, submitBtn, resultDisplay, resultContent, nextBtn, scoreTracker;
 let errorMessage; // For displaying error messages
+let bootScreen, desktop, clockElement;
+let statQuestions, statError, statAccuracy; // New stat elements
 
 // Fetch and process question data from the GitHub repository
-// Handles network errors and invalid JSON gracefully
+// The data.js file is a JavaScript file that defines a 'data' variable containing an array of question objects
+// Handles network errors and parsing errors gracefully
 async function loadQuestions() {
     try {
-        const response = await fetch('https://raw.githubusercontent.com/EricAndrechek/FermiQuestions/main/question-bank.json');
+        // Fetch the data.js file as text (not JSON)
+        const response = await fetch('https://raw.githubusercontent.com/landy8697/open-scioly-fermi/master/data.js');
         
         // Check if the fetch was successful
         if (!response.ok) {
             throw new Error(`Failed to load questions: HTTP ${response.status}. Please check your internet connection.`);
         }
         
-        // Parse the JSON data
-        const data = await response.json();
+        // Get the JavaScript code as text
+        const jsCode = await response.text();
         
-        // Validate that the data has the expected structure
-        if (!data.questions || typeof data.questions !== 'object') {
-            throw new Error('Invalid question data format.');
+        // Extract the data variable from the JavaScript file
+        // The file contains: data = [{question: "...", answer: 5, ...}, ...]
+        // We use Function() to safely execute the code and extract the 'data' variable
+        let data;
+        try {
+            // Create a function that executes the code and returns the data variable
+            const extractData = new Function(jsCode + '; return data;');
+            data = extractData();
+        } catch (parseError) {
+            throw new Error('Failed to parse question data. The data file format may have changed.');
         }
         
-        // Flatten all questions from all sources into a single array
-        // The JSON structure has questions nested under different sources
-        const flattened = [];
-        for (const source in data.questions) {
-            const sourceQuestions = data.questions[source];
-            for (const questionText in sourceQuestions) {
-                flattened.push({
-                    question: questionText,
-                    answer: sourceQuestions[questionText] // Answer is the power of 10
-                });
-            }
+        // Validate that we got an array
+        if (!Array.isArray(data)) {
+            throw new Error('Invalid question data format. Expected an array.');
+        }
+        
+        // Convert the data format to our app's expected format
+        // The new format is: [{question: "...", answer: 5, source: "...", number: 1}, ...]
+        // Our app expects: [{question: "...", answer: 5}, ...]
+        const flattened = data.map(item => ({
+            question: item.question ? item.question.trim() : '',
+            answer: item.answer // Answer is already the power of 10
+        })).filter(item => item.question && typeof item.answer === 'number'); // Filter out invalid entries
+        
+        // Validate we have questions
+        if (flattened.length === 0) {
+            throw new Error('No valid questions found in the data file.');
         }
         
         // Shuffle the array randomly so questions appear in different order each session
@@ -270,11 +286,52 @@ function nextQuestion() {
     displayQuestion();
 }
 
-// Update score tracker
+// Update score tracker with retro game-style formatting
 function updateScoreTracker() {
     const avgError = questionsAnswered > 0 ? (totalError / questionsAnswered).toFixed(1) : '0.0';
     const accuracy = questionsAnswered > 0 ? Math.round((withinOneOrder / questionsAnswered) * 100) : 0;
-    scoreTracker.textContent = `Questions answered: ${questionsAnswered} | Average error: ${avgError} order${parseFloat(avgError) !== 1 ? 's' : ''} of magnitude | Accuracy: ${accuracy}% within 1 order`;
+    
+    // Update individual stat elements with retro formatting
+    if (statQuestions) {
+        statQuestions.textContent = String(questionsAnswered).padStart(3, '0');
+    }
+    if (statError) {
+        statError.textContent = avgError;
+    }
+    if (statAccuracy) {
+        statAccuracy.textContent = String(accuracy).padStart(3, '0') + '%';
+    }
+}
+
+// Update clock display
+function updateClock() {
+    if (clockElement) {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        clockElement.textContent = `${hours}:${minutes}`;
+    }
+}
+
+// Boot sequence: show boot screen, then transition to desktop
+function showBootSequence() {
+    bootScreen = document.getElementById('bootScreen');
+    desktop = document.getElementById('desktop');
+    
+    if (!bootScreen || !desktop) return;
+    
+    // Boot screen is visible by default
+    // After 2.5 seconds, fade out and show desktop
+    setTimeout(() => {
+        bootScreen.style.opacity = '0';
+        bootScreen.style.transition = 'opacity 0.5s ease-out';
+        
+        setTimeout(() => {
+            bootScreen.style.display = 'none';
+            desktop.style.display = 'block';
+            desktop.style.animation = 'fadeIn 0.5s ease-in';
+        }, 500);
+    }, 2500);
 }
 
 // Initialize UI
@@ -287,6 +344,14 @@ function initializeUI() {
     nextBtn = document.getElementById('nextBtn');
     scoreTracker = document.getElementById('scoreTracker');
     errorMessage = document.getElementById('errorMessage');
+    clockElement = document.getElementById('clock');
+    statQuestions = document.getElementById('statQuestions');
+    statError = document.getElementById('statError');
+    statAccuracy = document.getElementById('statAccuracy');
+    
+    // Initialize clock and update every minute
+    updateClock();
+    setInterval(updateClock, 60000);
     
     // Event listeners
     submitBtn.addEventListener('click', checkAnswer);
@@ -323,25 +388,40 @@ function initializeUI() {
 
 // App initialization - runs when the page loads
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Fermi Problem Practice App loaded');
+    console.log('FERMI ESTIMATOR v1.0 loaded');
+    
+    // Show boot sequence
+    showBootSequence();
+    
+    // Initialize UI (but desktop is hidden until boot completes)
     initializeUI();
     
     try {
-        // Fetch and load questions from the remote JSON file
+        // Fetch and load questions from the remote data file
         await loadQuestions();
         console.log('Questions loaded and shuffled:', questionsArray);
         
-        // Display the first question immediately
-        displayQuestion();
+        // Wait for boot sequence to complete before showing first question
+        setTimeout(() => {
+            if (questionsArray.length > 0) {
+                displayQuestion();
+            }
+        }, 3000); // Boot sequence is 2.5s + 0.5s fade
     } catch (error) {
         // Handle errors gracefully - show user-friendly message
         console.error('Failed to load questions:', error);
-        questionDisplay.textContent = `Error: ${error.message || 'Unable to load questions. Please check your internet connection and refresh the page.'}`;
-        questionDisplay.style.color = '#c62828';
-        questionDisplay.style.background = '#ffebee';
         
-        // Disable input and submit button if questions can't be loaded
-        answerInput.disabled = true;
-        submitBtn.disabled = true;
+        // Wait for boot sequence, then show error
+        setTimeout(() => {
+            if (questionDisplay) {
+                questionDisplay.textContent = `ERROR: ${error.message || 'Unable to load questions. Please check your internet connection and refresh the page.'}`;
+                questionDisplay.style.color = '#C75050';
+                questionDisplay.style.background = '#F5D4D4';
+            }
+            
+            // Disable input and submit button if questions can't be loaded
+            if (answerInput) answerInput.disabled = true;
+            if (submitBtn) submitBtn.disabled = true;
+        }, 3000);
     }
 });
