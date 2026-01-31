@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fermi Problem Practice</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Fermi Problem Practice</h1>
+        <div id="app">
+            <div class="score-tracker" id="scoreTracker">
+                Questions answered: 0 | Average error: 0.0 orders of magnitude
+            </div>
+            
+            <div class="question-display" id="questionDisplay">
+                Loading questions...
+            </div>
+            
+            <div class="input-section">
+                <input 
+                    type="text" 
+                    id="answerInput" 
+                    placeholder="Enter your answer (e.g., 50000 or 3.5e8)"
+                    autocomplete="off"
+                >
+                <div class="error-message" id="errorMessage" style="display: none;"></div>
+                <button id="submitBtn" class="btn btn-primary">Submit</button>
+            </div>
+            
+            <div class="result-display" id="resultDisplay" style="display: none;">
+                <div class="result-content" id="resultContent"></div>
+                <button id="nextBtn" class="btn btn-secondary">Next Question</button>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
