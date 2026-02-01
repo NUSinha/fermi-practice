@@ -259,7 +259,7 @@ body {
     margin-top: 8px;
     font-style: normal;
     font-weight: normal;
-    text-align: right;
+    text-align: center;
 }
 
 @keyframes fadeIn {
@@ -573,7 +573,6 @@ body {
     right: 16px;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10px;
-    color: #5A5A6A;
     z-index: 50;
     pointer-events: auto;
     font-weight: normal;
@@ -583,6 +582,7 @@ body {
     color: #5A5A6A;
     text-decoration: underline;
     transition: color 0.2s ease;
+    font-weight: normal;
 }
 
 .dataset-credit a:hover {

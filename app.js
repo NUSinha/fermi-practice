@@ -128,13 +128,26 @@ function displayQuestion() {
         return;
     }
     
-    // Display question text with attribution
-    const questionText = currentQuestion.question || '';
-    const attribution = currentQuestion.source && currentQuestion.number 
-        ? `<div class="question-attribution">— ${currentQuestion.source}, #${currentQuestion.number}</div>`
-        : '';
+    // Log question data for debugging
+    console.log('Current question:', currentQuestion);
+    console.log('Source:', currentQuestion.source);
+    console.log('Number:', currentQuestion.number);
     
-    questionDisplay.innerHTML = `<div class="question-text">${questionText}</div>${attribution}`;
+    // Display question text
+    const questionText = currentQuestion.question || '';
+    
+    // Create attribution element if source and number exist
+    let attributionHTML = '';
+    if (currentQuestion.source && currentQuestion.number !== undefined) {
+        attributionHTML = `<div class="question-attribution">— ${currentQuestion.source}, #${currentQuestion.number}</div>`;
+        console.log('Attribution created:', attributionHTML);
+    } else {
+        console.log('No attribution - source:', currentQuestion.source, 'number:', currentQuestion.number);
+    }
+    
+    // Clear previous content and set new question with attribution
+    questionDisplay.innerHTML = `<div class="question-text">${questionText}</div>${attributionHTML}`;
+    
     answerInput.value = '';
     answerInput.focus();
     resultDisplay.style.display = 'none';
