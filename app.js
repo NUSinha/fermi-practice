@@ -3,12 +3,15 @@
 // Store the questions array
 let questionsArray = [];
 let currentQuestion = null; // Store the currently displayed question
+let questionHistory = []; // History of shown questions for PREV button
+let historyIndex = -1; // Current position in history (-1 means at the latest)
 let questionsAnswered = 0;
 let totalError = 0;
 let withinOneOrder = 0; // Track answers within 1 order of magnitude
 
 // DOM elements
 let questionDisplay, answerInput, submitBtn, resultDisplay, resultContent, nextBtn, scoreTracker;
+let prevBtn, skipBtn; // Skip navigation buttons
 let errorMessage; // For displaying error messages
 let bootScreen, desktop, clockElement;
 let statQuestions, statError, statAccuracy; // New stat elements
@@ -109,8 +112,8 @@ function getFeedbackMessage(error) {
     return `Off by ${error} orders of magnitude`;
 }
 
-// Display current question with attribution
-function displayQuestion() {
+// Display a specific question (used for both new questions and history navigation)
+function displayQuestion(question = null, addToHistory = true) {
     if (questionsArray.length === 0) {
         questionDisplay.innerHTML = 'No questions available.';
         answerInput.disabled = true;
@@ -118,15 +121,33 @@ function displayQuestion() {
         return;
     }
     
-    // Pick a random question from the array and store it
-    currentQuestion = getRandomQuestion();
+    // Use provided question or pick a random one
+    if (!question) {
+        question = getRandomQuestion();
+    }
     
-    if (!currentQuestion) {
+    if (!question) {
         questionDisplay.innerHTML = 'No questions available.';
         answerInput.disabled = true;
         submitBtn.disabled = true;
         return;
     }
+    
+    // Store current question
+    currentQuestion = question;
+    
+    // Add to history if this is a new question (not navigating back)
+    if (addToHistory) {
+        // If we're not at the end of history, remove future items (can't go forward after going back)
+        if (historyIndex < questionHistory.length - 1) {
+            questionHistory = questionHistory.slice(0, historyIndex + 1);
+        }
+        questionHistory.push(question);
+        historyIndex = questionHistory.length - 1;
+    }
+    
+    // Update PREV button state
+    updatePrevButtonState();
     
     // Log question data for debugging
     console.log('Current question:', currentQuestion);
@@ -152,6 +173,21 @@ function displayQuestion() {
     answerInput.focus();
     resultDisplay.style.display = 'none';
     hideErrorMessage();
+}
+
+// Go to previous question in history
+function goToPreviousQuestion() {
+    if (historyIndex > 0) {
+        historyIndex--;
+        const prevQuestion = questionHistory[historyIndex];
+        displayQuestion(prevQuestion, false); // Don't add to history when navigating
+    }
+}
+
+// Skip to next question (doesn't affect score)
+function skipToNextQuestion() {
+    // Pick a new random question
+    displayQuestion(null, true); // Add to history
 }
 
 // Show error message
@@ -288,11 +324,18 @@ function getPowerOf10Description(power) {
     return `(that's about ${value})`;
 }
 
-// Move to next question (picks a new random question)
+// Move to next question after submitting (picks a new random question)
 function nextQuestion() {
     answerInput.disabled = false;
     submitBtn.disabled = false;
-    displayQuestion();
+    displayQuestion(null, true); // Add to history
+}
+
+// Update PREV button enabled/disabled state
+function updatePrevButtonState() {
+    if (prevBtn) {
+        prevBtn.disabled = historyIndex <= 0;
+    }
 }
 
 // Update score tracker with retro game-style formatting
@@ -366,6 +409,8 @@ function initializeUI() {
     resultDisplay = document.getElementById('resultDisplay');
     resultContent = document.getElementById('resultContent');
     nextBtn = document.getElementById('nextBtn');
+    prevBtn = document.getElementById('prevBtn');
+    skipBtn = document.getElementById('skipBtn');
     scoreTracker = document.getElementById('scoreTracker');
     errorMessage = document.getElementById('errorMessage');
     clockElement = document.getElementById('clock');
@@ -380,22 +425,27 @@ function initializeUI() {
     // Event listeners
     submitBtn.addEventListener('click', checkAnswer);
     nextBtn.addEventListener('click', nextQuestion);
+    prevBtn.addEventListener('click', goToPreviousQuestion);
+    skipBtn.addEventListener('click', skipToNextQuestion);
     
     // Keyboard support
-    // When input is enabled: Enter submits answer
-    // When results are shown: Enter or Right Arrow goes to next question
+    // Enter key: Only submits answer when input has a value (does NOT skip)
     answerInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !answerInput.disabled) {
             e.preventDefault();
-            checkAnswer();
+            const userInput = answerInput.value.trim();
+            if (userInput) {
+                checkAnswer();
+            }
         }
     });
     
     // Global keyboard listener for next question (when results are shown)
+    // Right Arrow goes to next question after submitting
     document.addEventListener('keydown', (e) => {
         // Only handle if results are displayed
         if (resultDisplay.style.display === 'block') {
-            if (e.key === 'Enter' || e.key === 'ArrowRight') {
+            if (e.key === 'ArrowRight') {
                 e.preventDefault();
                 nextQuestion();
             }
@@ -408,6 +458,9 @@ function initializeUI() {
             hideErrorMessage();
         }
     });
+    
+    // Initialize PREV button state
+    updatePrevButtonState();
 }
 
 // App initialization - runs when the page loads
@@ -427,7 +480,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showQuestionWhenReady() {
         if (questionsLoaded && bootComplete && questionDisplay) {
             if (questionsArray.length > 0) {
-                displayQuestion();
+                displayQuestion(null, true); // Add to history
             }
         }
     }

@@ -280,6 +280,13 @@ body {
     gap: 12px;
 }
 
+.button-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
 .retro-input {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 16px;
@@ -369,6 +376,29 @@ body {
 
 .btn-secondary:hover {
     background: #E4B857;
+}
+
+.btn-small {
+    font-size: 8px;
+    padding: 10px 16px;
+    background: #B0B0B0;
+    border-color: #B0B0B0;
+}
+
+.btn-small:hover {
+    background: #C0C0C0;
+}
+
+.btn-small:active {
+    background: #A0A0A0;
+}
+
+.btn-small:disabled {
+    background: #E0E0E0;
+    color: #999;
+    cursor: not-allowed;
+    border: 2px inset #CCC;
+    opacity: 0.6;
 }
 
 /* ============================================
@@ -540,6 +570,16 @@ body {
     .btn {
         font-size: 9px;
         padding: 10px 16px;
+    }
+
+    .btn-small {
+        font-size: 7px;
+        padding: 8px 12px;
+    }
+
+    .button-group {
+        gap: 6px;
+        flex-wrap: wrap;
     }
 
     .score-tracker {
