@@ -169,25 +169,45 @@ function displayQuestion(question = null, addToHistory = true) {
     // Clear previous content and set new question with attribution
     questionDisplay.innerHTML = `<div class="question-text">${questionText}</div>${attributionHTML}`;
     
+    // Clear input and reset UI state
     answerInput.value = '';
-    answerInput.focus();
+    answerInput.disabled = false;
+    submitBtn.disabled = false;
     resultDisplay.style.display = 'none';
     hideErrorMessage();
+    
+    // Focus on input for next entry
+    answerInput.focus();
 }
 
 // Go to previous question in history
 function goToPreviousQuestion() {
+    console.log('PREV button clicked. History index:', historyIndex, 'History length:', questionHistory.length);
     if (historyIndex > 0) {
         historyIndex--;
         const prevQuestion = questionHistory[historyIndex];
+        console.log('Going back to question:', prevQuestion);
         displayQuestion(prevQuestion, false); // Don't add to history when navigating
+    } else {
+        console.log('Already at start of history, cannot go back');
     }
 }
 
 // Skip to next question (doesn't affect score)
 function skipToNextQuestion() {
+    console.log('SKIP button clicked. Skipping to next question...');
+    // Clear input field
+    answerInput.value = '';
+    // Hide any error messages
+    hideErrorMessage();
+    // Hide result display if shown
+    resultDisplay.style.display = 'none';
+    // Re-enable input and submit button
+    answerInput.disabled = false;
+    submitBtn.disabled = false;
     // Pick a new random question
     displayQuestion(null, true); // Add to history
+    console.log('Skipped to new question');
 }
 
 // Show error message
@@ -425,8 +445,21 @@ function initializeUI() {
     // Event listeners
     submitBtn.addEventListener('click', checkAnswer);
     nextBtn.addEventListener('click', nextQuestion);
-    prevBtn.addEventListener('click', goToPreviousQuestion);
-    skipBtn.addEventListener('click', skipToNextQuestion);
+    
+    // PREV and SKIP button listeners with null checks
+    if (prevBtn) {
+        prevBtn.addEventListener('click', goToPreviousQuestion);
+        console.log('PREV button listener attached');
+    } else {
+        console.error('PREV button not found!');
+    }
+    
+    if (skipBtn) {
+        skipBtn.addEventListener('click', skipToNextQuestion);
+        console.log('SKIP button listener attached');
+    } else {
+        console.error('SKIP button not found!');
+    }
     
     // Keyboard support
     // Enter key: Only submits answer when input has a value (does NOT skip)
@@ -461,6 +494,10 @@ function initializeUI() {
     
     // Initialize PREV button state
     updatePrevButtonState();
+    
+    // Log button initialization
+    console.log('UI initialized. PREV button:', prevBtn ? 'found' : 'NOT FOUND');
+    console.log('UI initialized. SKIP button:', skipBtn ? 'found' : 'NOT FOUND');
 }
 
 // App initialization - runs when the page loads
