@@ -2,7 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertAttemptSchema } from "@shared/schema";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 import { z } from "zod";
 
 const SYSTEM_PROMPT = `You are a Fermi estimation tutor for students. Help them develop estimation skills.
@@ -215,8 +219,6 @@ export async function registerRoutes(
     res.setHeader("Connection", "keep-alive");
 
     try {
-      const client = new Anthropic();
-
       let userPrompt = "";
       if (mode === "explain") {
         userPrompt = `The student was asked: "${question}"\nCorrect answer: 10^${correctAnswer}\nThe student guessed: ${userAnswer} (which is 10^${userOrderOfMagnitude})\nThey were off by ${Math.abs(userOrderOfMagnitude - correctAnswer)} order(s) of magnitude.\n\nPlease explain how to estimate this, working backwards from the correct answer of 10^${correctAnswer}.`;
@@ -226,16 +228,20 @@ export async function registerRoutes(
         userPrompt = `Context: The student is working on "${question}" (correct answer: 10^${correctAnswer}).\nStudent's message: ${message}`;
       }
 
-      const stream = await client.messages.stream({
-        model: "claude_sonnet_4_6",
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
         max_tokens: 500,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userPrompt }],
+        stream: true,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
       });
 
-      for await (const event of stream) {
-        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-          res.write(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`);
+      for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content;
+        if (text) {
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
         }
       }
       res.write("data: [DONE]\n\n");
